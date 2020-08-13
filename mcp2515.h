@@ -338,7 +338,9 @@ class MCP2515
             INSTRUCTION_RTS_TX2     = 0x84,
             INSTRUCTION_RTS_ALL     = 0x87,
             INSTRUCTION_READ_RX0    = 0x90,
+            INSTRUCTION_READ_RXD0   = 0x92,
             INSTRUCTION_READ_RX1    = 0x94,
+            INSTRUCTION_READ_RXD1   = 0x96,
             INSTRUCTION_READ_STATUS = 0xA0,
             INSTRUCTION_RX_STATUS   = 0xB0,
             INSTRUCTION_RESET       = 0xC0
@@ -433,6 +435,7 @@ class MCP2515
             REGISTER CTRL;
             REGISTER SIDH;
             REGISTER DATA;
+            INSTRUCTION LOAD;
         } TXB[N_TXBUFFERS];
 
         static const struct RXBn_REGS {
@@ -440,6 +443,7 @@ class MCP2515
             REGISTER SIDH;
             REGISTER DATA;
             CANINTF  CANINTF_RXnIF;
+            INSTRUCTION RXDATA;
         } RXB[N_RXBUFFERS];
 
         uint8_t SPICS;
@@ -456,6 +460,8 @@ class MCP2515
         void setRegister(const REGISTER reg, const uint8_t value);
         void setRegisters(const REGISTER reg, const uint8_t values[], const uint8_t n);
         void modifyRegister(const REGISTER reg, const uint8_t mask, const uint8_t data);
+		void loadTxBuff(const INSTRUCTION ins, const uint8_t head[], const uint8_t m, const uint8_t values[], const uint8_t n);
+		void readRxBuff(const INSTRUCTION ins, uint8_t values[], const uint8_t n);
 
         void prepareId(uint8_t *buffer, const bool ext, const uint32_t id);
     
