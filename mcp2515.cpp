@@ -677,7 +677,7 @@ MCP2515::ERROR MCP2515::readMessage(const RXBn rxbn, struct can_frame *frame)
     frame->can_id = id;
     frame->can_dlc = dlc;
 
-    readRxBuff(rxb->RXD0, frame->data, dlc);
+    readRxBuff(rxb->RXDATA, frame->data, dlc);
 
     return ERROR_OK;
 }
