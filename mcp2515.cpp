@@ -2,14 +2,14 @@
 #include "mcp2515.h"
 
 const struct MCP2515::TXBn_REGS MCP2515::TXB[MCP2515::N_TXBUFFERS] = {
-    {MCP_TXB0CTRL, MCP_TXB0SIDH, MCP_TXB0DATA},
-    {MCP_TXB1CTRL, MCP_TXB1SIDH, MCP_TXB1DATA},
-    {MCP_TXB2CTRL, MCP_TXB2SIDH, MCP_TXB2DATA}
+    {MCP_TXB0CTRL, MCP_TXB0SIDH, MCP_TXB0DATA, INSTRUCTION_LOAD_TX0},
+    {MCP_TXB1CTRL, MCP_TXB1SIDH, MCP_TXB1DATA, INSTRUCTION_LOAD_TX1},
+    {MCP_TXB2CTRL, MCP_TXB2SIDH, MCP_TXB2DATA, INSTRUCTION_LOAD_TX2}
 };
 
 const struct MCP2515::RXBn_REGS MCP2515::RXB[N_RXBUFFERS] = {
-    {MCP_RXB0CTRL, MCP_RXB0SIDH, MCP_RXB0DATA, CANINTF_RX0IF},
-    {MCP_RXB1CTRL, MCP_RXB1SIDH, MCP_RXB1DATA, CANINTF_RX1IF}
+    {MCP_RXB0CTRL, MCP_RXB0SIDH, MCP_RXB0DATA, CANINTF_RX0IF, INSTRUCTION_READ_RXD0},
+    {MCP_RXB1CTRL, MCP_RXB1SIDH, MCP_RXB1DATA, CANINTF_RX1IF, INSTRUCTION_READ_RXD1}
 };
 
 MCP2515::MCP2515(const uint8_t _CS)
@@ -132,6 +132,29 @@ void MCP2515::modifyRegister(const REGISTER reg, const uint8_t mask, const uint8
     SPI.transfer(reg);
     SPI.transfer(mask);
     SPI.transfer(data);
+    endSPI();
+}
+
+void MCP2515::loadTxBuff(const INSTRUCTION ins, const uint8_t head[], const uint8_t m, const uint8_t data[], const uint8_t n)
+{
+    startSPI();
+    SPI.transfer(ins);
+    for (uint8_t i=0; i<m; i++) {
+        SPI.transfer(head[i]);
+    }
+    for (uint8_t i=0; i<n; i++) {
+        SPI.transfer(data[i]);
+    }
+    endSPI();
+}
+
+void MCP2515::readRxBuff(const INSTRUCTION ins, uint8_t values[], const uint8_t n)
+{
+    startSPI();
+    SPI.transfer(ins);
+    for (uint8_t i=0; i<n; i++) {
+        SPI.transfer(values[i]);
+    }
     endSPI();
 }
 
@@ -584,7 +607,7 @@ MCP2515::ERROR MCP2515::sendMessage(const TXBn txbn, const struct can_frame *fra
 
     const struct TXBn_REGS *txbuf = &TXB[txbn];
 
-    uint8_t data[13];
+    uint8_t data[5];
 
     bool ext = (frame->can_id & CAN_EFF_FLAG);
     bool rtr = (frame->can_id & CAN_RTR_FLAG);
@@ -594,9 +617,7 @@ MCP2515::ERROR MCP2515::sendMessage(const TXBn txbn, const struct can_frame *fra
 
     data[MCP_DLC] = rtr ? (frame->can_dlc | RTR_MASK) : frame->can_dlc;
 
-    memcpy(&data[MCP_DATA], frame->data, frame->can_dlc);
-
-    setRegisters(txbuf->SIDH, data, 5 + frame->can_dlc);
+    loadTxBuff(txbuf->LOAD, data, 5, frame->data, frame->can_dlc);
 
     modifyRegister(txbuf->CTRL, TXB_TXREQ, TXB_TXREQ);
 
@@ -656,9 +677,7 @@ MCP2515::ERROR MCP2515::readMessage(const RXBn rxbn, struct can_frame *frame)
     frame->can_id = id;
     frame->can_dlc = dlc;
 
-    readRegisters(rxb->DATA, frame->data, dlc);
-
-    modifyRegister(MCP_CANINTF, rxb->CANINTF_RXnIF, 0);
+    readRxBuff(rxb->RXD0, frame->data, dlc);
 
     return ERROR_OK;
 }
